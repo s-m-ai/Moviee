@@ -1,0 +1,458 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark">
+<title>Video → MP4 URL</title>
+<style>
+*,*::before,*::after{box-sizing:border-box}
+[hidden]{display:none !important}
+:root{
+  --bg:#0a0e16; --panel:#111827; --panel2:#182234; --line:#243044;
+  --text:#e8eefb; --muted:#8b9ab3; --accent:#4f8cff; --accent2:#22d3a6;
+  --danger:#ff5d6c; --radius:16px;
+}
+html{-webkit-text-size-adjust:100%}
+body{
+  margin:0;min-height:100vh;color:var(--text);line-height:1.6;
+  font-family:"Noto Sans Thai","Inter",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  background:
+    radial-gradient(1000px 520px at 12% -12%, #17294a 0%, transparent 62%),
+    radial-gradient(900px 520px at 100% 0%, #0e3138 0%, transparent 58%),
+    var(--bg);
+  background-attachment:fixed;
+}
+.wrap{max-width:1060px;margin:0 auto;padding:32px 18px 64px}
+
+/* ---------- header ---------- */
+header{text-align:center;margin-bottom:28px}
+h1{margin:0 0 12px;font-size:clamp(23px,4.2vw,36px);letter-spacing:-.02em;line-height:1.35}
+.grad{background:linear-gradient(92deg,#5f9bff,#22d3a6);-webkit-background-clip:text;background-clip:text;color:transparent}
+.sub{margin:0 auto;max-width:660px;color:var(--muted);font-size:15px}
+.sub b{color:#bcd0f0;font-weight:600}
+
+/* ---------- dropzone ---------- */
+.drop{
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;
+  border:2px dashed var(--line);border-radius:20px;padding:44px 22px;text-align:center;
+  cursor:pointer;background:linear-gradient(180deg,rgba(255,255,255,.035),rgba(255,255,255,.012));
+  transition:border-color .18s,background .18s,transform .18s;
+}
+.drop:hover{border-color:#3b5075;background:rgba(79,140,255,.06)}
+.drop.over{border-color:var(--accent);background:rgba(79,140,255,.13);transform:scale(1.008)}
+.drop .icon{font-size:42px;line-height:1}
+.drop-title{font-size:17px;font-weight:600}
+.drop-sub{font-size:13px;color:var(--muted);max-width:540px}
+.fake-btn{
+  margin-top:10px;display:inline-block;padding:10px 20px;border-radius:11px;
+  font-size:14px;font-weight:600;color:#fff;
+  background:linear-gradient(135deg,#4f8cff,#2f6bdd);
+  box-shadow:0 8px 22px -10px rgba(79,140,255,.9);
+}
+
+/* ---------- toolbar ---------- */
+.toolbar{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:24px 2px 14px;flex-wrap:wrap}
+.count{color:var(--muted);font-size:13.5px}
+
+/* ---------- list / card ---------- */
+.list{display:flex;flex-direction:column;gap:14px}
+.card{
+  display:grid;grid-template-columns:280px 1fr;gap:16px;
+  background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:14px;
+  animation:pop .26s ease both;
+}
+@keyframes pop{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+.thumb{background:#000;border-radius:12px;overflow:hidden;aspect-ratio:16/9}
+.thumb video{width:100%;height:100%;object-fit:contain;display:block}
+.info{min-width:0;display:flex;flex-direction:column;gap:10px;justify-content:center}
+.fname{font-weight:600;font-size:15px;word-break:break-all;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.meta{color:var(--muted);font-size:12.5px}
+.urlrow{display:flex;gap:8px}
+.urlrow input{
+  flex:1;min-width:0;background:var(--panel2);border:1px solid var(--line);color:#bcd0f0;
+  border-radius:10px;padding:9px 12px;font-size:12.5px;
+  font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+}
+.urlrow input:focus{border-color:var(--accent);outline:none}
+.actions{display:flex;gap:8px;flex-wrap:wrap}
+
+/* ---------- buttons ---------- */
+.btn{
+  display:inline-flex;align-items:center;gap:6px;
+  border:1px solid var(--line);background:var(--panel2);color:var(--text);
+  padding:9px 14px;border-radius:10px;font:inherit;font-size:13px;cursor:pointer;
+  text-decoration:none;transition:.15s;white-space:nowrap;
+}
+.btn:hover{background:#1f2b3e;border-color:#33445e}
+.btn.primary{background:linear-gradient(135deg,#4f8cff,#2f6bdd);border-color:transparent;color:#fff;font-weight:600}
+.btn.primary:hover{filter:brightness(1.08)}
+.btn.danger{color:#ff8a94}
+.btn.danger:hover{background:rgba(255,93,108,.12);border-color:rgba(255,93,108,.42)}
+.btn.ok{background:var(--accent2);border-color:transparent;color:#04140f;font-weight:700}
+
+/* ---------- badge ---------- */
+.badge{font-size:11px;font-weight:700;letter-spacing:.04em;padding:3px 8px;border-radius:999px;border:1px solid}
+.badge.good{color:#22d3a6;border-color:rgba(34,211,166,.42);background:rgba(34,211,166,.1)}
+.badge.warn{color:#ffc46b;border-color:rgba(255,196,107,.42);background:rgba(255,196,107,.1)}
+
+/* ---------- note ---------- */
+.note{
+  margin-top:30px;padding:16px 18px;border-radius:14px;font-size:13.5px;line-height:1.8;
+  background:rgba(79,140,255,.07);border:1px solid rgba(79,140,255,.22);color:#a9bcd8;
+}
+.note strong{color:#dce7f8}
+.note code{background:rgba(255,255,255,.08);padding:1px 6px;border-radius:6px;font-size:12.5px;color:#bcd0f0}
+
+/* ---------- toast ---------- */
+#toast{
+  position:fixed;left:50%;bottom:26px;transform:translate(-50%,20px);z-index:50;
+  background:#1c2740;border:1px solid var(--line);color:var(--text);
+  padding:11px 20px;border-radius:12px;font-size:14px;opacity:0;pointer-events:none;
+  transition:.22s;box-shadow:0 16px 40px -18px #000;
+}
+#toast.show{opacity:1;transform:translate(-50%,0)}
+
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+@media (max-width:720px){
+  .card{grid-template-columns:1fr}
+  .urlrow{flex-wrap:wrap}
+  .urlrow input{flex:1 1 100%}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <h1>🎬 อัปโหลดวิดีโอ → <span class="grad">ลิงก์ .mp4</span></h1>
+    <p class="sub">
+      ลากไฟล์วิดีโอมาวาง หรือคลิกเพื่อเลือกไฟล์ แล้วรับ <b>direct URL</b>
+      พร้อมปุ่มดาวน์โหลดและโค้ดฝัง — ประมวลผลในเบราว์เซอร์ 100% ไม่มีการส่งไฟล์ขึ้นเซิร์ฟเวอร์
+    </p>
+  </header>
+
+  <label class="drop" id="drop" for="fileInput">
+    <div class="icon">📤</div>
+    <div class="drop-title">ลากไฟล์วิดีโอมาวางที่นี่</div>
+    <div class="drop-sub">หรือคลิกเพื่อเลือกไฟล์ · รองรับ MP4, WEBM, MOV, M4V และอื่น ๆ · เลือกได้หลายไฟล์พร้อมกัน</div>
+    <span class="fake-btn">เลือกไฟล์วิดีโอ</span>
+  </label>
+  <input type="file" id="fileInput" accept="video/*,.mp4,.m4v,.webm,.mov,.ogv,.mkv" multiple hidden>
+
+  <div class="toolbar" id="toolbar" hidden>
+    <div class="count" id="count"></div>
+    <button class="btn danger" id="clearBtn" type="button">🗑 ลบทั้งหมด</button>
+  </div>
+
+  <section class="list" id="list"></section>
+
+  <div class="note">
+    <strong>หมายเหตุ:</strong> ลิงก์ที่ได้เป็น <code>blob:</code> URL ซึ่งชี้ไปยังไฟล์ในหน่วยความจำของเบราว์เซอร์นี้
+    — ใช้งานได้ทันที (เปิดแท็บใหม่ / ดาวน์โหลด / ฝังในหน้าเว็บ) แต่จะใช้ได้เฉพาะในเบราว์เซอร์และแท็บนี้เท่านั้น
+    เมื่อปิดแท็บ ลิงก์จะหมดอายุ และไม่สามารถแชร์ให้ผู้อื่นเปิดได้
+    หากต้องการลิงก์ <code>.mp4</code> ถาวรที่แชร์ได้จริง ต้องอัปโหลดไฟล์ขึ้นโฮสต์จริง เช่น
+    GitHub Releases, Cloudflare R2, Amazon S3 หรือ Supabase Storage
+    (GitHub Pages เป็น static hosting ที่ไม่รับการอัปโหลดไฟล์)
+  </div>
+
+</div>
+
+<div id="toast"></div>
+
+<script>
+(function () {
+  'use strict';
+
+  var drop      = document.getElementById('drop');
+  var fileInput = document.getElementById('fileInput');
+  var list      = document.getElementById('list');
+  var toolbar   = document.getElementById('toolbar');
+  var countEl   = document.getElementById('count');
+  var clearBtn  = document.getElementById('clearBtn');
+
+  var registry = new Map();   // id -> { id, file, url, card }
+  var seq = 0;
+
+  var VIDEO_RE = /\.(mp4|m4v|webm|mov|ogv|ogg|mkv|avi|3gp)$/i;
+
+  /* ================= helpers ================= */
+
+  function isVideo(file) {
+    return (file.type && file.type.indexOf('video/') === 0) || VIDEO_RE.test(file.name);
+  }
+
+  function formatBytes(b) {
+    if (!b) return '0 B';
+    var u = ['B', 'KB', 'MB', 'GB', 'TB'];
+    var i = Math.floor(Math.log(b) / Math.log(1024));
+    if (i >= u.length) i = u.length - 1;
+    return (b / Math.pow(1024, i)).toFixed(i === 0 ? 0 : 1) + ' ' + u[i];
+  }
+
+  function formatTime(s) {
+    if (!isFinite(s) || s <= 0) return '--:--';
+    s = Math.round(s);
+    var h = Math.floor(s / 3600);
+    var m = Math.floor((s % 3600) / 60);
+    var sec = s % 60;
+    var mm = String(m).padStart(2, '0');
+    var ss = String(sec).padStart(2, '0');
+    return h ? String(h).padStart(2, '0') + ':' + mm + ':' + ss : mm + ':' + ss;
+  }
+
+  function extOf(name) {
+    var m = /\.([^.\\/]+)$/.exec(name || '');
+    return m ? m[1].toLowerCase() : '';
+  }
+
+  var toastTimer;
+  function toast(msg) {
+    var el = document.getElementById('toast');
+    el.textContent = msg;
+    el.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(function () { el.classList.remove('show'); }, 2200);
+  }
+
+  function flash(btn, text) {
+    var old = btn.dataset.label || btn.textContent;
+    btn.dataset.label = old;
+    btn.textContent = text;
+    btn.classList.add('ok');
+    clearTimeout(btn._t);
+    btn._t = setTimeout(function () {
+      btn.textContent = old;
+      btn.classList.remove('ok');
+    }, 1400);
+  }
+
+  function copyText(text, btn) {
+    function done() { if (btn) flash(btn, 'คัดลอกแล้ว ✓'); else toast('คัดลอกแล้ว ✓'); }
+    if (navigator.clipboard && window.isSecureContext) {
+      navigator.clipboard.writeText(text).then(done).catch(fallback);
+    } else {
+      fallback();
+    }
+    function fallback() {
+      var ta = document.createElement('textarea');
+      ta.value = text;
+      ta.setAttribute('readonly', '');
+      ta.style.cssText = 'position:fixed;top:0;left:0;opacity:0';
+      document.body.appendChild(ta);
+      ta.select();
+      try { document.execCommand('copy'); done(); } catch (e) { toast('คัดลอกไม่สำเร็จ'); }
+      document.body.removeChild(ta);
+    }
+  }
+
+  /* ================= core ================= */
+
+  function addFiles(files) {
+    var added = 0, skipped = 0;
+    for (var i = 0; i < files.length; i++) {
+      if (!isVideo(files[i])) { skipped++; continue; }
+      addOne(files[i]);
+      added++;
+    }
+    if (skipped) toast('ข้าม ' + skipped + ' ไฟล์ที่ไม่ใช่วิดีโอ');
+    if (added) updateUI();
+  }
+
+  function addOne(file) {
+    var id = ++seq;
+    var url = URL.createObjectURL(file);
+    var card = renderCard(id, file, url);
+    list.insertBefore(card, list.firstChild);
+    registry.set(id, { id: id, file: file, url: url, card: card });
+    hydrate(card, file);
+  }
+
+  function hydrate(card, file) {
+    var video = card.querySelector('video');
+    var meta = card.querySelector('.meta');
+
+    function done() {
+      var parts = [formatBytes(file.size)];
+      if (isFinite(video.duration) && video.duration > 0) parts.push(formatTime(video.duration));
+      if (video.videoWidth) parts.push(video.videoWidth + '×' + video.videoHeight);
+      if (file.type) parts.push(file.type);
+      meta.textContent = parts.join(' · ');
+    }
+
+    if (video.readyState >= 1) { done(); return; }
+    video.addEventListener('loadedmetadata', done, { once: true });
+    video.addEventListener('error', function () {
+      meta.textContent = formatBytes(file.size) + ' · อ่านข้อมูลวิดีโอไม่ได้ (อาจไม่รองรับรูปแบบนี้)';
+    }, { once: true });
+  }
+
+  function renderCard(id, file, url) {
+    var card = document.createElement('article');
+    card.className = 'card';
+
+    /* --- thumbnail / preview --- */
+    var thumb = document.createElement('div');
+    thumb.className = 'thumb';
+    var video = document.createElement('video');
+    video.src = url;
+    video.controls = true;
+    video.playsInline = true;
+    video.preload = 'metadata';
+    thumb.appendChild(video);
+    card.appendChild(thumb);
+
+    /* --- info --- */
+    var info = document.createElement('div');
+    info.className = 'info';
+
+    var nameRow = document.createElement('div');
+    nameRow.className = 'fname';
+    var nameSpan = document.createElement('span');
+    nameSpan.textContent = file.name;
+    var ext = extOf(file.name);
+    var badge = document.createElement('span');
+    badge.className = 'badge ' + (ext === 'mp4' ? 'good' : 'warn');
+    badge.textContent = ext ? ext.toUpperCase() : 'VIDEO';
+    nameRow.appendChild(nameSpan);
+    nameRow.appendChild(badge);
+
+    var meta = document.createElement('div');
+    meta.className = 'meta';
+    meta.textContent = 'กำลังอ่านข้อมูล…';
+
+    /* --- URL row --- */
+    var urlRow = document.createElement('div');
+    urlRow.className = 'urlrow';
+    var input = document.createElement('input');
+    input.type = 'text';
+    input.readOnly = true;
+    input.value = url;
+    input.title = url;
+    input.addEventListener('focus', function () { input.select(); });
+    var copyBtn = document.createElement('button');
+    copyBtn.type = 'button';
+    copyBtn.className = 'btn';
+    copyBtn.textContent = '📋 คัดลอก';
+    copyBtn.addEventListener('click', function () { copyText(url, copyBtn); });
+    urlRow.appendChild(input);
+    urlRow.appendChild(copyBtn);
+
+    /* --- actions --- */
+    var actions = document.createElement('div');
+    actions.className = 'actions';
+
+    var aDl = document.createElement('a');
+    aDl.className = 'btn primary';
+    aDl.href = url;
+    aDl.download = file.name;
+    aDl.textContent = '⬇ ดาวน์โหลด';
+
+    var aOpen = document.createElement('a');
+    aOpen.className = 'btn';
+    aOpen.href = url;
+    aOpen.target = '_blank';
+    aOpen.rel = 'noopener';
+    aOpen.textContent = '↗ เปิดในแท็บใหม่';
+
+    var embedBtn = document.createElement('button');
+    embedBtn.type = 'button';
+    embedBtn.className = 'btn';
+    embedBtn.textContent = '</> โค้ดฝัง';
+    embedBtn.addEventListener('click', function () {
+      copyText('<video src="' + url + '" controls playsinline style="max-width:100%"></video>', embedBtn);
+    });
+
+    var delBtn = document.createElement('button');
+    delBtn.type = 'button';
+    delBtn.className = 'btn danger';
+    delBtn.textContent = '🗑 ลบ';
+    delBtn.addEventListener('click', function () { removeItem(id); });
+
+    actions.appendChild(aDl);
+    actions.appendChild(aOpen);
+    actions.appendChild(embedBtn);
+    actions.appendChild(delBtn);
+
+    info.appendChild(nameRow);
+    info.appendChild(meta);
+    info.appendChild(urlRow);
+    info.appendChild(actions);
+    card.appendChild(info);
+
+    return card;
+  }
+
+  function removeItem(id) {
+    var item = registry.get(id);
+    if (!item) return;
+    URL.revokeObjectURL(item.url);
+    item.card.remove();
+    registry.delete(id);
+    updateUI();
+  }
+
+  function clearAll() {
+    if (!registry.size) return;
+    registry.forEach(function (it) { URL.revokeObjectURL(it.url); });
+    registry.clear();
+    list.innerHTML = '';
+    updateUI();
+    toast('ลบไฟล์ทั้งหมดแล้ว');
+  }
+
+  function updateUI() {
+    var n = registry.size;
+    toolbar.hidden = n === 0;
+    countEl.textContent = 'วิดีโอ ' + n + ' ไฟล์';
+  }
+
+  /* ================= events ================= */
+
+  fileInput.addEventListener('change', function () {
+    if (fileInput.files && fileInput.files.length) addFiles(fileInput.files);
+    fileInput.value = '';
+  });
+
+  ['dragenter', 'dragover'].forEach(function (ev) {
+    drop.addEventListener(ev, function (e) {
+      e.preventDefault();
+      e.stopPropagation();
+      drop.classList.add('over');
+    });
+  });
+
+  drop.addEventListener('dragleave', function (e) {
+    e.preventDefault();
+    if (e.relatedTarget && drop.contains(e.relatedTarget)) return;
+    drop.classList.remove('over');
+  });
+
+  drop.addEventListener('drop', function (e) {
+    e.preventDefault();
+    e.stopPropagation();
+    drop.classList.remove('over');
+    if (e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files.length) {
+      addFiles(e.dataTransfer.files);
+    }
+  });
+
+  // กันเบราว์เซอร์เปิดไฟล์เองเมื่อลากมาวางนอกโซน
+  window.addEventListener('dragover', function (e) { e.preventDefault(); });
+  window.addEventListener('drop', function (e) { e.preventDefault(); });
+
+  clearBtn.addEventListener('click', clearAll);
+
+  // วางไฟล์จากคลิปบอร์ด
+  document.addEventListener('paste', function (e) {
+    if (!e.clipboardData) return;
+    var files = Array.prototype.slice.call(e.clipboardData.files || []);
+    if (files.length) addFiles(files);
+  });
+
+  updateUI();
+})();
+</script>
+</body>
+</html>
